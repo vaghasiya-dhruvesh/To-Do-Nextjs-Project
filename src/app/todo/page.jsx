@@ -5,6 +5,8 @@ import React, { PureComponent, createRef } from 'react'
 import TodoFilter from '../components/todo/todoFilter'
 import TodoForm from '../components/todo/todoForm'
 import TodoList from '../components/todo/todoList'
+import { redirect } from 'next/dist/server/api-utils'
+import todoList from '../components/todo/todoList'
 
 export default class Todo extends PureComponent {
 
@@ -15,60 +17,130 @@ export default class Todo extends PureComponent {
 
     todoTextRef = createRef();
 
-    addTodo = (e) => {
-        e.preventDefault();
+    componentDidMount() {
+        this.loadData();
+    }
 
-        // const todoText = document.getElementById("todoText");    // It takes O[N] times
-        // todoText = this.todoTextRef.current;      // It takes O[1] constant time  -- This is power of Virtual dom
+    loadData = async () => {
+        try
+        {
+            const res = await fetch("http://localhost:8000/todoList")
+            const json = await res.json();
+            this.setState({ todoList: json });
+        } catch (error)
+        {
 
-        const todoInput = this.todoTextRef.current;
+        }
+    }
 
-        // Validate: If the input is empty or only spaces, do nothing
-        // if (!todoInput || !todoInput.value.trim()) return;
+    addTodo = async (e) => {
 
-        const newTodo = {
-            id: new Date().valueOf(),
-            text: todoInput.value.trim(),
-            isDone: false
-        };
+        try
+        {
 
-        this.setState((state) => ({
-            todoList: [...state.todoList, newTodo]
-        }), () => {
-            // Clear the input after adding
-            todoInput.value = "";
-        });
+            e.preventDefault();
+
+            // const todoText = document.getElementById("todoText");    // It takes O[N] times
+            // todoText = this.todoTextRef.current;      // It takes O[1] constant time  -- This is power of Virtual dom
+
+            const todoInput = this.todoTextRef.current;
+
+            const res = await fetch("http://localhost:8000/todoList", {
+                method: "POST",
+                body: JSON.stringify({
+                    text: todoInput.value,
+                    isDone: false
+                }),
+                header: {
+                    "content-type": "application/json",
+                    Accept: "application/json"
+                }
+            })
+            const json = await res.json();
+
+            // Validate: If the input is empty or only spaces, do nothing
+            // if (!todoInput || !todoInput.value.trim()) return;
+
+            // const newTodo = {
+            //     id: new Date().valueOf(),
+            //     text: todoInput.value.trim(),
+            //     isDone: false
+            // };
+
+            this.setState((state) => ({
+                // todoList: [...state.todoList, newTodo]
+                todoList: [...state.todoList, json]
+            }), () => {
+                // Clear the input after adding
+                todoInput.value = "";
+            });
+        } catch (error)
+        {
+
+        }
     }
 
     // changeText = (e) => {
     //     this.setState({ todoText: e.target.value })
     // }
 
-    toggleTodoComplete = (todoItem, value) => {
-        this.setState((state) => {   // here it is compulsory to pass state first as a aggrument in setState function 
-            const index = state.todoList.findIndex((item) => item.id === todoItem.id);
+    toggleTodoComplete = async (todoItem, value) => {
+        try
+        {
 
-            return {
-                todoList: [
-                    ...state.todoList.slice(0, index),
-                    { ...state.todoList[index], isDone: value },
-                    ...state.todoList.slice(index + 1)
-                ]
-            }
-        })
+            const res = await fetch(`http://localhost:8000/todoList/${todoItem.id}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    ...todoItem,
+                    isDone: value
+                }),
+                header: {
+                    "content-type": "application/json",
+                    Accept: "application/json"
+                }
+            })
+            const json = await res.json();
+
+            this.setState((state) => {   // here it is compulsory to pass state first as a aggrument in setState function 
+                const index = state.todoList.findIndex((item) => item.id === todoItem.id);
+
+                return {
+                    todoList: [
+                        ...state.todoList.slice(0, index),
+                        json,
+                        ...state.todoList.slice(index + 1)
+                    ]
+                }
+            })
+        } catch (error)
+        {
+
+        }
     }
 
-    deleteTodo = (todoItem) => {
-        this.setState((state) => {   // here it is compulsory to pass state first as a aggrument in setState function 
-            const index = state.todoList.findIndex((item) => item.id === todoItem.id);
+    deleteTodo = async (todoItem) => {
+        try
+        {
 
-            return {
-                todoList: [
-                    ...state.todoList.slice(0, index),
-                    ...state.todoList.slice(index + 1)
-                ]
-            }
-        })
+            await fetch(`http://localhost:8000/todoList/${todoItem.id}`, {
+                method: "DELETE",
+            })
+
+            this.setState((state) => {   // here it is compulsory to pass state first as a aggrument in setState function 
+                const index = state.todoList.findIndex((item) => item.id === todoItem.id);
+
+                return {
+                    todoList: [
+                        ...state.todoList.slice(0, index),
+                        ...state.todoList.slice(index + 1)
+                    ]
+                }
+            })
+        } catch (error)
+        {
+
+        }
+
     }
 
 
